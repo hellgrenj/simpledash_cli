@@ -31,7 +31,7 @@ sudo install sc /usr/local/bin/
 ```sc -h https://your.simpledash.url```
 
 ### tips
-If you have multiple clusters, running simpledash, create aliases for them in your .bashrc or .zshrc file.  
+If you have multiple simpledash servers create aliases for them in your .bashrc or .zshrc file.  
 like this:  
 ```
 alias stest="sc -h https://simpledash-test.mycompany.com"
