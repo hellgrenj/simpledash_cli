@@ -1,7 +1,6 @@
 # simpledash CLI
 
-a simple readonly CLI for [simpledash](https://github.com/hellgrenj/simpledash). 
-early days, but it works.  
+a simple readonly CLI for [simpledash](https://github.com/hellgrenj/simpledash).  
 
 
 It connects to the simpledash websocket server and displays a dashboard in the terminal.   
@@ -37,6 +36,6 @@ like this:
 alias stest="sc -h https://simpledash-test.mycompany.com"
 alias sprod="sc -h https://simpledash-prod.mycompany.com"
 ```  
-now you can just type ```stest``` or ```sprod``` to start the CLI for the different clusters.
+now you can just type ```stest``` or ```sprod``` to start the CLI for the different servers.
 
 
