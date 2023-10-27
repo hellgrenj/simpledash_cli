@@ -9,7 +9,7 @@ It will update the dashboard when the websocket server sends an update.
 screen 1: select a namespace  
 ![screenshot2](screenshot1.png)  
 
-screen 2: monitor the namespace (endpoints, deployments and pods). this screen auto updates when the websocket server sends an update. You can click on the view logs link and endpoint links.   
+screen 2: monitor the namespace (endpoints, deployments and pods). this screen auto updates when the websocket server sends an update. You can click on the view logs links and endpoint links.   
 ![screenshot2](screenshot2.png)
 
 ## Installation
