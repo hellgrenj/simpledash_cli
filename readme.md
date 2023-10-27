@@ -1,6 +1,6 @@
 # simpledash CLI
 
-a simple CLI for [simpledash](https://github.com/hellgrenj/simpledash). 
+a simple readonly CLI for [simpledash](https://github.com/hellgrenj/simpledash). 
 early days, but it works.  
 
 
@@ -31,7 +31,7 @@ sudo install sc /usr/local/bin/
 ```sc -h https://your.simpledash.url```
 
 ### tips
-If you have multiple clusters create aliases for them in your .bashrc or .zshrc file.  
+If you have multiple clusters, running simpledash, create aliases for them in your .bashrc or .zshrc file.  
 like this:  
 ```
 alias stest="sc -h https://simpledash-test.mycompany.com"
