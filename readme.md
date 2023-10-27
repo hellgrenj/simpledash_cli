@@ -3,9 +3,17 @@
 a simple CLI for [simpledash](https://github.com/hellgrenj/simpledash). 
 
 ## Installation
-1. Download the latest released binary for your platform from [here](https://github.com/hellgrenj/simpledash_cli/releases/tag/v0.1.0)  
-2. Rename the binary to `sc`
-3. Add the binary to your path
+
+linux x86_64:
+```
+curl -Lo sc https://github.com/hellgrenj/simpledash_cli/releases/download/v0.1.0/sc-linux-x86_64 && \
+sudo install sc /usr/local/bin/
+```
+macos arm64:
+```
+curl -Lo sc https://github.com/hellgrenj/simpledash_cli/releases/download/v0.1.0/sc-macos-arm64 && \
+sudo install sc /usr/local/bin/
+```
 
 ## Usage
 
