@@ -6,7 +6,7 @@ It fetches the simpledash context, connects to the simpledash websocket server
 and displays a dashboard in the terminal.
 It will update the dashboard when the websocket server sends an update.
 
-screen 1: select a namespace\
+screen 1: see cluster status and select a namespace    
 ![screenshot2](screenshot1.png)
 
 screen 2: monitor the namespace (endpoints, deployments and pods). this screen
