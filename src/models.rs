@@ -1,5 +1,10 @@
 use serde::Deserialize;
 
+
+pub struct Settings {
+    pub host: String,
+}
+
 #[derive(Debug, Deserialize, Default)]
 pub struct ClusterInfo {
     #[serde(rename = "ClusterName")]

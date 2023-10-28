@@ -15,15 +15,16 @@ fn main() {
     .expect("Error setting Ctrl-C handler");
     clear_screen();
     println!("{}", "..::simpledash CLI::..".green().on_black().bold());
-    let host = cli::parse_args();
-    let mut socket = client::connect_to_host(&host).expect("Error connecting to host");
-    let cluster_info = client::get_cluster_info(&host).expect("Failed to fetch Simpledash Context");
+    let settings = cli::parse_args();
+    let mut socket = client::connect_to_host(&settings.host).expect("Error connecting to host");
+    let cluster_info =
+        client::get_cluster_info(&settings.host).expect("Failed to fetch Simpledash Context");
     let ns = select_namespace(&cluster_info);
     loop {
         if !socket.can_read() {
             println!("Socket is not readable");
             println!("trying to reconnect");
-            socket = client::connect_to_host(&host).expect("Error re-connecting to host");
+            socket = client::connect_to_host(&settings.host).expect("Error re-connecting to host");
         }
         let read_result = socket.read();
 

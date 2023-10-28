@@ -1,5 +1,6 @@
-
 use colored::*;
+
+use crate::models::Settings;
 
 pub fn clear_screen() {
     print!("{}[2J", 27 as char); // clear screen
@@ -14,7 +15,7 @@ pub fn clean_exit() {
 pub fn make_link(url: String, anchor_text: String) -> String {
     return format!("\x1b]8;;{}\x07{}\x1b]8;;\x07", url, anchor_text);
 }
-pub fn parse_args() -> String {
+pub fn parse_args() -> Settings {
     let mut host = "".to_string();
     let args: Vec<String> = std::env::args().collect();
     for (i, arg) in args.iter().enumerate() {
@@ -51,5 +52,5 @@ pub fn parse_args() -> String {
         );
         std::process::exit(1);
     }
-    host
+    return Settings { host };
 }
