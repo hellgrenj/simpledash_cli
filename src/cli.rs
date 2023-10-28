@@ -19,7 +19,11 @@ pub fn parse_args() -> String {
     let args: Vec<String> = std::env::args().collect();
     for (i, arg) in args.iter().enumerate() {
         if arg == "--help" {
-            println!("{}", "Usage: simpledash-cli -h <host>".yellow().bold());
+            println!("{}", "Usage: sc -h <host>".yellow().bold());
+            std::process::exit(0);
+        }
+        if arg == "--version" {
+            println!("{}", "v0.1.1".yellow().bold());
             std::process::exit(0);
         }
         if arg == "-h" {
