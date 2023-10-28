@@ -71,12 +71,12 @@ fn get_cluster_status(
             None => continue, // no payload on ping (tungstenite replies with pong automatically)
         };
 
-        let mut not_running_pods = Vec::new();
+        let mut pods_in_bad_state = Vec::new();
         for (_, value) in payload.nodes.iter() {
             for pod in value.iter() {
                 if pod.status != "Running" && pod.status != "Succeeded" && pod.status != "Completed"
                 {
-                    not_running_pods.push(pod);
+                    pods_in_bad_state.push(pod);
                 }
             }
         }
@@ -86,8 +86,8 @@ fn get_cluster_status(
             "...in namespaces".magenta().bold().cell().bold(true),
             "overall status".magenta().bold().cell().bold(true),
         ]];
-        if not_running_pods.len() > 0 {
-            let failed_in_namespaces = not_running_pods
+        if pods_in_bad_state.len() > 0 {
+            let failed_in_namespaces = pods_in_bad_state
                 .iter()
                 .map(|pod| pod.namespace.clone())
                 .collect::<std::collections::HashSet<String>>() // Collect into a HashSet to remove duplicates
@@ -97,7 +97,7 @@ fn get_cluster_status(
 
             rows.push(vec![
                 host.blue().bold().cell().justify(Justify::Left),
-                not_running_pods
+                pods_in_bad_state
                     .len()
                     .to_string()
                     .red()
@@ -109,7 +109,7 @@ fn get_cluster_status(
         } else {
             rows.push(vec![
                 host.blue().bold().cell().justify(Justify::Left),
-                not_running_pods
+                pods_in_bad_state
                     .len()
                     .to_string()
                     .green()
