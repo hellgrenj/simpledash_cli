@@ -7,11 +7,6 @@ pub fn clear_screen() {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char); // position cursor at row 1, col 1
     println!("")
 }
-pub fn clean_exit() {
-    clear_screen();
-    println!("{}", "See you later!".yellow().bold());
-    std::process::exit(0);
-}
 pub fn make_link(url: String, anchor_text: String) -> String {
     return format!("\x1b]8;;{}\x07{}\x1b]8;;\x07", url, anchor_text);
 }

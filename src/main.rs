@@ -12,10 +12,6 @@ use models::{ClusterInfo, Payload};
 use tungstenite::{stream::MaybeTlsStream, WebSocket};
 
 fn main() {
-    ctrlc::set_handler(move || {
-        cli::clean_exit();
-    })
-    .expect("Error setting Ctrl-C handler");
     clear_screen();
     println!("{}", "..::simpledash CLI::..\n".magenta().on_black().bold());
     let settings = cli::parse_args();
