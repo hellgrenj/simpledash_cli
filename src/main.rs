@@ -2,11 +2,14 @@ mod cli;
 mod client;
 mod models;
 
+use std::net::TcpStream;
+
 use cli::clear_screen;
 use cli_table::{format::Justify, Cell, Style, Table};
 use colored::*;
 use dialoguer::{theme::ColorfulTheme, Select};
 use models::{ClusterInfo, Payload};
+use tungstenite::{stream::MaybeTlsStream, WebSocket};
 
 fn main() {
     ctrlc::set_handler(move || {
@@ -14,39 +17,138 @@ fn main() {
     })
     .expect("Error setting Ctrl-C handler");
     clear_screen();
-    println!("{}", "..::simpledash CLI::..".green().on_black().bold());
+    println!("{}", "..::simpledash CLI::..\n".magenta().on_black().bold());
     let settings = cli::parse_args();
     let mut socket = client::connect_to_host(&settings.host).expect("Error connecting to host");
     let cluster_info =
         client::get_cluster_info(&settings.host).expect("Failed to fetch Simpledash Context");
-    let ns = select_namespace(&cluster_info);
-    loop {
-        if !socket.can_read() {
-            println!("Socket is not readable");
-            println!("trying to reconnect");
-            socket = client::connect_to_host(&settings.host).expect("Error re-connecting to host");
-        }
-        let read_result = socket.read();
 
-        let msg = match read_result {
-            Ok(msg) => msg,
-            Err(e) => {
-                println!("Error reading message: {:?}", e);
-                continue;
-            }
-        };
-        if msg.len() <= 0 {
-            continue; // a ping that tungstenite will reply to with a pong automatically
-        }
-        clear_screen();
-        let payload = match serde_json::from_str(&msg.to_string()) {
+    let peek_payload = visualize_cluster_status(&mut socket, &settings.host);
+    let ns = select_namespace(&cluster_info);
+    visualize_payload(peek_payload, &ns, &cluster_info);
+
+    loop {
+        let payload_option = match receive_payload(&mut socket, &settings.host) {
             Ok(payload) => payload,
             Err(e) => {
-                println!("Error parsing payload: {:?}", e);
+                eprintln!("Error receiving payload: {:?}", e);
                 continue;
             }
         };
+
+        let payload = match payload_option {
+            Some(payload) => payload,
+            None => continue, // no payload on ping (tungstenite replies with pong automatically)
+        };
+
         visualize_payload(payload, &ns, &cluster_info);
+    }
+}
+
+fn visualize_cluster_status(
+    socket: &mut WebSocket<MaybeTlsStream<TcpStream>>,
+    host: &String,
+) -> Payload {
+    let (payload, status_table) = get_cluster_status(socket, host);
+    println!("{}", status_table);
+    payload
+}
+
+fn get_cluster_status(
+    socket: &mut WebSocket<MaybeTlsStream<TcpStream>>,
+    host: &String,
+) -> (Payload, String) {
+    loop {
+        let payload_option = match receive_payload(socket, host) {
+            Ok(payload) => payload,
+            Err(e) => {
+                eprintln!("Error receiving payload: {:?}", e);
+                continue;
+            }
+        };
+        let payload = match payload_option {
+            Some(payload) => payload,
+            None => continue, // no payload on ping (tungstenite replies with pong automatically)
+        };
+
+        let mut not_running_pods = Vec::new();
+        for (_, value) in payload.nodes.iter() {
+            for pod in value.iter() {
+                if pod.status != "Running" && pod.status != "Succeeded" && pod.status != "Completed"
+                {
+                    not_running_pods.push(pod);
+                }
+            }
+        }
+        let mut rows = vec![vec![
+            "cluster".magenta().bold().cell().bold(true),
+            "#unhealthy pods".magenta().bold().cell().bold(true),
+            "...in namespaces".magenta().bold().cell().bold(true),
+            "overall status".magenta().bold().cell().bold(true),
+        ]];
+        if not_running_pods.len() > 0 {
+            let failed_in_namespaces = not_running_pods
+                .iter()
+                .map(|pod| pod.namespace.clone())
+                .collect::<std::collections::HashSet<String>>() // Collect into a HashSet to remove duplicates
+                .into_iter()
+                .collect::<Vec<String>>()
+                .join(", ");
+
+            rows.push(vec![
+                host.blue().bold().cell().justify(Justify::Left),
+                not_running_pods
+                    .len()
+                    .to_string()
+                    .red()
+                    .cell()
+                    .justify(Justify::Left),
+                failed_in_namespaces.cell().justify(Justify::Left),
+                "BAD".bold().red().cell().justify(Justify::Left),
+            ]);
+        } else {
+            rows.push(vec![
+                host.blue().bold().cell().justify(Justify::Left),
+                not_running_pods
+                    .len()
+                    .to_string()
+                    .green()
+                    .cell()
+                    .justify(Justify::Left),
+                "".cell().justify(Justify::Left),
+                "OK".bold().green().cell().justify(Justify::Left),
+            ]);
+        }
+        let table = rows.table().bold(true);
+        
+        let table_display = match table.display() {
+            Ok(display) => display,
+            Err(e) => {
+                eprintln!("Error displaying cluster status table: {:?}", e);
+                return (payload, "could not visualize cluster status".to_string());
+            }
+        };
+
+        break (payload, table_display.to_string());
+    }
+}
+
+fn receive_payload(
+    socket: &mut WebSocket<MaybeTlsStream<TcpStream>>,
+    host: &String,
+) -> Result<Option<Payload>, Box<dyn std::error::Error>> {
+    if !socket.can_read() {
+        println!("Socket is not readable");
+        println!("trying to reconnect");
+        *socket = client::connect_to_host(host)?;
+    }
+    let read_result = socket.read()?;
+
+    if read_result.len() > 0 {
+        let payload: Payload = serde_json::from_str(&read_result.to_string())?;
+        Ok(Some(payload))
+    } else {
+        Ok(None) // no payload on ping (tungstenite replies with pong automatically)
     }
 }
 
@@ -72,6 +174,7 @@ fn select_namespace(cluster_info: &ClusterInfo) -> String {
 }
 
 fn visualize_payload(payload: Payload, namespace: &str, cluster_info: &ClusterInfo) {
+    clear_screen();
     print_endpoints(&payload, namespace);
     print_deployments(&payload, namespace, cluster_info);
     print_pods_table(&payload, namespace, cluster_info);

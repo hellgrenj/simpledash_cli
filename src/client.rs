@@ -16,7 +16,6 @@ pub fn get_cluster_info(host: &String) -> Result<ClusterInfo, Error> {
 pub fn connect_to_host(
     host: &String,
 ) -> Result<WebSocket<MaybeTlsStream<TcpStream>>, Box<dyn std::error::Error>> {
-    println!("Connecting to {}", host);
     let mut protocol = "ws";
     let mut actual_host = host.clone();
     if host.split_at(8).0 == "https://" {
@@ -42,8 +41,8 @@ pub fn connect_to_host(
     };
 
     println!(
-        "successfully connected to {}",
-        url.to_string().magenta().bold().on_black()
+        "{}",
+        "successfully connected!".green().bold()
     );
     Ok(socket)
 }
