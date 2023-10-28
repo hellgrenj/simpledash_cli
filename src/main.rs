@@ -78,23 +78,38 @@ fn visualize_payload(payload: Payload, namespace: &str, cluster_info: &ClusterIn
 
 fn print_endpoints(payload: &Payload, namespace: &str) {
     println!("{}", "Endpoints:".magenta().bold());
+    println!("{}", get_endpoints_visualization(payload, namespace));
+}
+fn get_endpoints_visualization(payload: &Payload, namespace: &str) -> String {
+    let mut result = String::new();
     if let Some(ingresses) = &payload.ingresses {
         for ingress in ingresses {
             if ingress.namespace != *namespace {
                 continue;
             }
-            println!(
-                "{}{} ({})",
+            result.push_str(&format!(
+                "{}{} ({})\n",
                 "https://".bold().blue(),
                 ingress.endpoint.bold().blue(),
                 ingress.ip
-            );
+            ));
         }
     }
+    result
 }
-
 fn print_deployments(payload: &Payload, namespace: &str, cluster_info: &ClusterInfo) {
     println!("{}", "Deployments:".magenta().bold());
+    println!(
+        "{}",
+        get_deployments_visualization(payload, namespace, cluster_info)
+    );
+}
+fn get_deployments_visualization(
+    payload: &Payload,
+    namespace: &str,
+    cluster_info: &ClusterInfo,
+) -> String {
+    let mut result = String::new();
     for deployment in payload.deployments.iter() {
         if deployment.namespace != *namespace {
             continue;
@@ -104,25 +119,35 @@ fn print_deployments(payload: &Payload, namespace: &str, cluster_info: &ClusterI
                 .deployment_logs_link
                 .replace("DEPLOYMENT_NAME_PLACEHOLDER", &deployment.name)
                 .replace("DEPLOYMENT_NAMESPACE_PLACEHOLDER", &deployment.namespace);
-            println!(
-                "{} ({}/{}) {}",
+            result.push_str(&format!(
+                "{} ({}/{}) {}\n",
                 deployment.name,
                 deployment.ready_replicas,
                 deployment.replicas,
                 cli::make_link(link_url, "view logs".to_string())
                     .bold()
                     .blue()
-            );
+            ));
         } else {
-            println!(
-                "{} ({}/{})",
+            result.push_str(&format!(
+                "{} ({}/{})\n",
                 deployment.name, deployment.ready_replicas, deployment.replicas
-            );
+            ));
         }
     }
+    result
 }
 fn print_pods_table(payload: &Payload, namespace: &str, cluster_info: &ClusterInfo) {
     println!("{}", "Pods:".magenta().bold());
+    println!("{}", get_pods_visualization(payload, namespace));
+    println!(
+        "{} in {} as per {}",
+        namespace.bold().magenta().on_black(),
+        cluster_info.cluster_name.bold().magenta().on_black(),
+        payload.timestamp.bold().yellow()
+    );
+}
+fn get_pods_visualization(payload: &Payload, namespace: &str) -> String {
     let mut pod_rows = vec![vec![
         "node".cell().bold(true),
         "pod name".cell().bold(true),
@@ -165,15 +190,51 @@ fn print_pods_table(payload: &Payload, namespace: &str, cluster_info: &ClusterIn
         Ok(display) => display,
         Err(e) => {
             eprintln!("Error displaying pod table: {:?}", e);
-            return;
+            return "could not visualize pods".to_string();
         }
     };
+    pod_table_display.to_string()
+}
 
-    println!("{}", pod_table_display);
-    println!(
-        "{} in {} as per {}",
-        namespace.bold().magenta().on_black(),
-        cluster_info.cluster_name.bold().magenta().on_black(),
-        payload.timestamp.bold().yellow()
-    );
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use models::{ClusterInfo, Deployment};
+
+    #[test]
+    fn test_get_deployments_visualization_visualizing_only_selected_namespace() {
+        // Arrange
+        let payload = Payload {
+            deployments: vec![
+                Deployment {
+                    name: "deployment1".to_string(),
+                    namespace: "namespace1".to_string(),
+                    ready_replicas: 2,
+                    replicas: 3,
+                    ..Default::default()
+                },
+                Deployment {
+                    name: "deployment2".to_string(),
+                    namespace: "namespace2".to_string(),
+                    ready_replicas: 1,
+                    replicas: 1,
+                    ..Default::default()
+                },
+            ],
+            ..Default::default()
+        };
+        let cluster_info = ClusterInfo {
+            deployment_logs_link_enabled: false,
+            ..Default::default()
+        };
+
+        // Act
+        let visualization = get_deployments_visualization(&payload, "namespace1", &cluster_info);
+
+        // Assert
+        // contains this
+        assert!(visualization.contains("deployment1 (2/3)"));
+        // and not this...
+        assert!(!visualization.contains("deployment2 (1/1)"));
+    }
 }

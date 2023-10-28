@@ -1,6 +1,6 @@
 use serde::Deserialize;
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 pub struct ClusterInfo {
     #[serde(rename = "ClusterName")]
     pub cluster_name: String,
@@ -12,7 +12,7 @@ pub struct ClusterInfo {
     pub deployment_logs_link: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 pub struct Payload {
     #[serde(rename = "Nodes")]
     pub nodes: std::collections::HashMap<String, Vec<Pods>>,
@@ -46,7 +46,7 @@ pub struct Ingress {
     pub namespace: String,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, Default)]
 pub struct Deployment {
     #[serde(rename = "Namespace")]
     pub namespace: String,
