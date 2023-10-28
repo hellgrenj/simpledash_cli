@@ -2,11 +2,11 @@ mod cli;
 mod client;
 mod models;
 
-use models::{ClusterInfo, Payload};
 use cli::clear_screen;
 use cli_table::{format::Justify, Cell, Style, Table};
 use colored::*;
 use dialoguer::{theme::ColorfulTheme, Select};
+use models::{ClusterInfo, Payload};
 
 fn main() {
     ctrlc::set_handler(move || {
@@ -38,7 +38,13 @@ fn main() {
             continue; // a ping that tungstenite will reply to with a pong automatically
         }
         clear_screen();
-        let payload: Payload = serde_json::from_str(&msg.to_string()).unwrap();
+        let payload = match serde_json::from_str(&msg.to_string()) {
+            Ok(payload) => payload,
+            Err(e) => {
+                println!("Error parsing payload: {:?}", e);
+                continue;
+            }
+        };
         visualize_payload(payload, &ns, &cluster_info);
     }
 }
@@ -64,7 +70,13 @@ fn select_namespace(cluster_info: &ClusterInfo) -> String {
     namespaces[selection].to_string()
 }
 
-fn visualize_payload(payload: Payload, namespace: &String, cluster_info: &ClusterInfo) {
+fn visualize_payload(payload: Payload, namespace: &str, cluster_info: &ClusterInfo) {
+    print_endpoints(&payload, namespace);
+    print_deployments(&payload, namespace, cluster_info);
+    print_pods_table(&payload, namespace, cluster_info);
+}
+
+fn print_endpoints(payload: &Payload, namespace: &str) {
     println!("{}", "Endpoints:".magenta().bold());
     if let Some(ingresses) = &payload.ingresses {
         for ingress in ingresses {
@@ -79,6 +91,9 @@ fn visualize_payload(payload: Payload, namespace: &String, cluster_info: &Cluste
             );
         }
     }
+}
+
+fn print_deployments(payload: &Payload, namespace: &str, cluster_info: &ClusterInfo) {
     println!("{}", "Deployments:".magenta().bold());
     for deployment in payload.deployments.iter() {
         if deployment.namespace != *namespace {
@@ -105,7 +120,8 @@ fn visualize_payload(payload: Payload, namespace: &String, cluster_info: &Cluste
             );
         }
     }
-
+}
+fn print_pods_table(payload: &Payload, namespace: &str, cluster_info: &ClusterInfo) {
     println!("{}", "Pods:".magenta().bold());
     let mut pod_rows = vec![vec![
         "node".cell().bold(true),
@@ -131,16 +147,27 @@ fn visualize_payload(payload: Payload, namespace: &String, cluster_info: &Cluste
                 colored_status = pod.status.red();
             }
 
+            let pod_image_tag = match pod.image.split(":").last() {
+                Some(tag) => tag,
+                None => "unknown",
+            };
+
             pod_rows.push(vec![
                 key.cell(),
                 pod.name.clone().cell(),
                 colored_status.cell().justify(Justify::Right),
-                pod.image.clone().split(":").last().unwrap().cell(),
+                pod_image_tag.cell(),
             ]);
         }
     }
     let pod_table = pod_rows.table().bold(true);
-    let pod_table_display = pod_table.display().unwrap();
+    let pod_table_display = match pod_table.display() {
+        Ok(display) => display,
+        Err(e) => {
+            eprintln!("Error displaying pod table: {:?}", e);
+            return;
+        }
+    };
 
     println!("{}", pod_table_display);
     println!(
@@ -150,4 +177,3 @@ fn visualize_payload(payload: Payload, namespace: &String, cluster_info: &Cluste
         payload.timestamp.bold().yellow()
     );
 }
-
