@@ -66,67 +66,69 @@ fn get_cluster_status(
             Some(payload) => payload,
             None => continue, // no payload on ping (tungstenite replies with pong automatically)
         };
-
-        let mut pods_in_bad_state = Vec::new();
-        for (_, value) in payload.nodes.iter() {
-            for pod in value.iter() {
-                if pod.status != "Running" && pod.status != "Succeeded" && pod.status != "Completed"
-                {
-                    pods_in_bad_state.push(pod);
-                }
-            }
-        }
-        let mut rows = vec![vec![
-            "cluster".magenta().bold().cell().bold(true),
-            "#unhealthy pods".magenta().bold().cell().bold(true),
-            "...in namespaces".magenta().bold().cell().bold(true),
-            "overall status".magenta().bold().cell().bold(true),
-        ]];
-        if pods_in_bad_state.len() > 0 {
-            let failed_in_namespaces = pods_in_bad_state
-                .iter()
-                .map(|pod| pod.namespace.clone())
-                .collect::<std::collections::HashSet<String>>() // Collect into a HashSet to remove duplicates
-                .into_iter()
-                .collect::<Vec<String>>()
-                .join(", ");
-
-            rows.push(vec![
-                host.blue().bold().cell().justify(Justify::Left),
-                pods_in_bad_state
-                    .len()
-                    .to_string()
-                    .red()
-                    .cell()
-                    .justify(Justify::Left),
-                failed_in_namespaces.cell().justify(Justify::Left),
-                "BAD".bold().red().cell().justify(Justify::Left),
-            ]);
-        } else {
-            rows.push(vec![
-                host.blue().bold().cell().justify(Justify::Left),
-                pods_in_bad_state
-                    .len()
-                    .to_string()
-                    .green()
-                    .cell()
-                    .justify(Justify::Left),
-                "".cell().justify(Justify::Left),
-                "OK".bold().green().cell().justify(Justify::Left),
-            ]);
-        }
-        let table = rows.table().bold(true);
-
-        let table_display = match table.display() {
-            Ok(display) => display,
-            Err(e) => {
-                eprintln!("Error displaying cluster status table: {:?}", e);
-                return (payload, "could not visualize cluster status".to_string());
-            }
-        };
-
-        break (payload, table_display.to_string());
+        break check_cluster_status(host, payload);
     }
+}
+
+fn check_cluster_status(host: &String, payload: Payload) -> (Payload, String) {
+    let mut pods_in_bad_state = Vec::new();
+    for (_, value) in payload.nodes.iter() {
+        for pod in value.iter() {
+            if pod.status != "Running" && pod.status != "Succeeded" && pod.status != "Completed" {
+                pods_in_bad_state.push(pod);
+            }
+        }
+    }
+    let mut rows = vec![vec![
+        "cluster".magenta().bold().cell().bold(true),
+        "#unhealthy pods".magenta().bold().cell().bold(true),
+        "...in namespaces".magenta().bold().cell().bold(true),
+        "overall status".magenta().bold().cell().bold(true),
+    ]];
+    if pods_in_bad_state.len() > 0 {
+        let failed_in_namespaces = pods_in_bad_state
+            .iter()
+            .map(|pod| pod.namespace.clone())
+            .collect::<std::collections::HashSet<String>>() // Collect into a HashSet to remove duplicates
+            .into_iter()
+            .collect::<Vec<String>>()
+            .join(", ");
+
+        rows.push(vec![
+            host.blue().bold().cell().justify(Justify::Left),
+            pods_in_bad_state
+                .len()
+                .to_string()
+                .red()
+                .cell()
+                .justify(Justify::Left),
+            failed_in_namespaces.cell().justify(Justify::Left),
+            "BAD".bold().red().cell().justify(Justify::Left),
+        ]);
+    } else {
+        rows.push(vec![
+            host.blue().bold().cell().justify(Justify::Left),
+            pods_in_bad_state
+                .len()
+                .to_string()
+                .green()
+                .cell()
+                .justify(Justify::Left),
+            "".cell().justify(Justify::Left),
+            "OK".bold().green().cell().justify(Justify::Left),
+        ]);
+    }
+    let table = rows.table().bold(true);
+
+    let table_display = match table.display() {
+        Ok(display) => display,
+        Err(e) => {
+            eprintln!("Error displaying cluster status table: {:?}", e);
+            return (payload, "could not visualize cluster status".to_string());
+        }
+    };
+
+    return (payload, table_display.to_string());
 }
 
 fn receive_payload(
@@ -189,7 +191,7 @@ fn get_endpoints_visualization(payload: &Payload, namespace: &str) -> String {
             }
             result.push_str(&format!(
                 "{}{} ({})\n",
-                "https://".bold().blue(), // .. :/.. Its been our case so far that everything is TLS, simpledash server has to return the protocol in use 
+                "https://".bold().blue(), // .. :/.. Its been our case so far that everything is TLS, simpledash server has to return the protocol in use
                 ingress.endpoint.bold().blue(),
                 ingress.ip
             ));
@@ -342,15 +344,18 @@ mod tests {
     fn get_endpoints_visualization_visualizing_only_selected_namespace() {
         // Arrange
         let payload = Payload {
-            ingresses: Some(vec![models::Ingress {
-                endpoint: "endpoint1".to_string(),
-                namespace: "namespace1".to_string(),
-                ip: "172.23.1.205".to_string(),
-            }, models::Ingress {
-                endpoint: "endpoint2".to_string(),
-                namespace: "namespace2".to_string(),
-                ip: "172.23.1.205".to_string(),
-            }]),
+            ingresses: Some(vec![
+                models::Ingress {
+                    endpoint: "endpoint1".to_string(),
+                    namespace: "namespace1".to_string(),
+                    ip: "172.23.1.205".to_string(),
+                },
+                models::Ingress {
+                    endpoint: "endpoint2".to_string(),
+                    namespace: "namespace2".to_string(),
+                    ip: "172.23.1.205".to_string(),
+                },
+            ]),
             ..Default::default()
         };
 
@@ -361,10 +366,20 @@ mod tests {
         // contains this
         println!("{}", visualization);
 
-        let expected = format!("{}{} ({})\n","https://".bold().blue(), "endpoint1".bold().blue(), "172.23.1.205");
+        let expected = format!(
+            "{}{} ({})\n",
+            "https://".bold().blue(),
+            "endpoint1".bold().blue(),
+            "172.23.1.205"
+        );
         assert!(visualization.eq(&expected));
         // and not this
-        let not_expected = format!("{}{} ({})\n","https://".bold().blue(), "endpoint2".bold().blue(), "172.23.1.205");
+        let not_expected = format!(
+            "{}{} ({})\n",
+            "https://".bold().blue(),
+            "endpoint2".bold().blue(),
+            "172.23.1.205"
+        );
         assert!(!visualization.contains(&not_expected));
     }
 
@@ -421,6 +436,30 @@ mod tests {
         assert!(!visualization.contains("tag2"));
     }
 
+    #[test]
+    fn check_cluster_status_sets_overall_status_to_bad_if_one_pod_is_crashloopbackoff() {
+        // Arrange
+        let payload = Payload {
+            nodes: std::collections::HashMap::from_iter(vec![(
+                "node1".to_string(),
+                vec![models::Pods {
+                    namespace: "namespace1".to_string(),
+                    name: "pod1".to_string(),
+                    status: "CrashLoopBackOff".to_string(),
+                    image: "image1:tag1".to_string(),
+                }],
+            )]),
+            ..Default::default()
+        };
+        let host = "host1".to_string();
 
+        // Act
+        let (_, status_table) = check_cluster_status(&host, payload);
 
+        // Assert
+        assert!(status_table.contains("BAD"));
+        assert!(status_table.contains("host1"));
+        assert!(status_table.contains("1"));
+        assert!(status_table.contains("namespace1"));
+    }
 }
