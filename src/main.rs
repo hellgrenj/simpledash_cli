@@ -116,7 +116,7 @@ fn get_cluster_status(
             ]);
         }
         let table = rows.table().bold(true);
-        
+
         let table_display = match table.display() {
             Ok(display) => display,
             Err(e) => {
@@ -189,7 +189,7 @@ fn get_endpoints_visualization(payload: &Payload, namespace: &str) -> String {
             }
             result.push_str(&format!(
                 "{}{} ({})\n",
-                "https://".bold().blue(),
+                "https://".bold().blue(), // .. :/.. Its been our case so far that everything is TLS, simpledash server has to return the protocol in use 
                 ingress.endpoint.bold().blue(),
                 ingress.ip
             ));
@@ -302,7 +302,7 @@ mod tests {
     use models::{ClusterInfo, Deployment};
 
     #[test]
-    fn test_get_deployments_visualization_visualizing_only_selected_namespace() {
+    fn get_deployments_visualization_visualizing_only_selected_namespace() {
         // Arrange
         let payload = Payload {
             deployments: vec![
@@ -337,4 +337,90 @@ mod tests {
         // and not this...
         assert!(!visualization.contains("deployment2 (1/1)"));
     }
+
+    #[test]
+    fn get_endpoints_visualization_visualizing_only_selected_namespace() {
+        // Arrange
+        let payload = Payload {
+            ingresses: Some(vec![models::Ingress {
+                endpoint: "endpoint1".to_string(),
+                namespace: "namespace1".to_string(),
+                ip: "172.23.1.205".to_string(),
+            }, models::Ingress {
+                endpoint: "endpoint2".to_string(),
+                namespace: "namespace2".to_string(),
+                ip: "172.23.1.205".to_string(),
+            }]),
+            ..Default::default()
+        };
+
+        // Act
+        let visualization = get_endpoints_visualization(&payload, "namespace1");
+
+        // Assert
+        // contains this
+        println!("{}", visualization);
+
+        let expected = format!("{}{} ({})\n","https://".bold().blue(), "endpoint1".bold().blue(), "172.23.1.205");
+        assert!(visualization.eq(&expected));
+        // and not this
+        let not_expected = format!("{}{} ({})\n","https://".bold().blue(), "endpoint2".bold().blue(), "172.23.1.205");
+        assert!(!visualization.contains(&not_expected));
+    }
+
+    #[test]
+    fn get_pods_visualization_visualizing_only_selected_namespace() {
+        // Arrange
+        let payload = Payload {
+            nodes: std::collections::HashMap::from_iter(vec![
+                (
+                    "node1".to_string(),
+                    vec![
+                        models::Pods {
+                            namespace: "namespace1".to_string(),
+                            name: "pod1".to_string(),
+                            status: "Running".to_string(),
+                            image: "image1:tag1".to_string(),
+                        },
+                        models::Pods {
+                            namespace: "namespace2".to_string(),
+                            name: "pod2".to_string(),
+                            status: "Running".to_string(),
+                            image: "image2:tag2".to_string(),
+                        },
+                    ],
+                ),
+                (
+                    "node2".to_string(),
+                    vec![models::Pods {
+                        namespace: "namespace1".to_string(),
+                        name: "pod3".to_string(),
+                        status: "Running".to_string(),
+                        image: "image3:tag3".to_string(),
+                    }],
+                ),
+            ]),
+            ..Default::default()
+        };
+
+        // Act
+        let visualization = get_pods_visualization(&payload, "namespace1");
+
+        // Assert
+        // contains this (pod 1 and pod 3 in node 1 and node 2)
+        assert!(visualization.contains("node1"));
+        assert!(visualization.contains("pod1"));
+        assert!(visualization.contains("Running"));
+        assert!(visualization.contains("tag1"));
+        assert!(visualization.contains("node2"));
+        assert!(visualization.contains("pod3"));
+        assert!(visualization.contains("Running"));
+        assert!(visualization.contains("tag3"));
+        // and not this (pod2)
+        assert!(!visualization.contains("pod2"));
+        assert!(!visualization.contains("tag2"));
+    }
+
+
+
 }
