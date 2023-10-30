@@ -136,8 +136,8 @@ fn receive_payload(
     host: &String,
 ) -> Result<Option<Payload>, Box<dyn std::error::Error>> {
     if !socket.can_read() {
-        println!("Socket is not readable");
-        println!("trying to reconnect");
+        println!("lost connection, trying to reconnect in 10 seconds...");
+        std::thread::sleep(std::time::Duration::from_secs(10));
         *socket = client::connect_to_host(host)?;
     }
     let read_result = socket.read()?;
