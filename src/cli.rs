@@ -10,7 +10,7 @@ pub fn clear_screen() {
 pub fn make_link(url: String, anchor_text: String) -> String {
     return format!("\x1b]8;;{}\x07{}\x1b]8;;\x07", url, anchor_text);
 }
-pub fn parse_args() -> Settings {
+pub fn parse_settings() -> Settings {
     let mut host = "".to_string();
     let args: Vec<String> = std::env::args().collect();
     for (i, arg) in args.iter().enumerate() {
