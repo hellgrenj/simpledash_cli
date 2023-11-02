@@ -14,7 +14,7 @@ use tungstenite::{stream::MaybeTlsStream, WebSocket};
 fn main() {
     clear_screen();
     println!("{}", "..::simpledash CLI::..\n".magenta().on_black().bold());
-    let settings = cli::parse_settings();
+    let settings = cli::parse_args();
     let mut socket = client::connect_to_host(&settings.host).expect("Error connecting to host");
     let cluster_info =
         client::get_cluster_info(&settings.host).expect("Failed to fetch Simpledash Context");
