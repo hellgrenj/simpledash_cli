@@ -462,4 +462,39 @@ mod tests {
         assert!(status_table.contains("1"));
         assert!(status_table.contains("namespace1"));
     }
+    #[test]
+    fn check_cluster_status_sets_overall_status_to_ok_if_all_pods_ok() {
+        // Arrange
+        let payload = Payload {
+            nodes: std::collections::HashMap::from_iter(vec![(
+                "node1".to_string(),
+                vec![models::Pods {
+                    namespace: "namespace1".to_string(),
+                    name: "pod1".to_string(),
+                    status: "Running".to_string(),
+                    image: "image1:tag1".to_string(),
+                }, models::Pods {
+                    namespace: "namespace1".to_string(),
+                    name: "pod2".to_string(),
+                    status: "Succeeded".to_string(),
+                    image: "image2:tag2".to_string(),
+                }, models::Pods {
+                    namespace: "namespace1".to_string(),
+                    name: "pod3".to_string(),
+                    status: "Completed".to_string(),
+                    image: "image3:tag3".to_string(),
+                }],
+            )]),
+            ..Default::default()
+        };
+        let host = "host1".to_string();
+
+        // Act
+        let (_, status_table) = check_cluster_status(&host, payload);
+
+        // Assert
+        assert!(status_table.contains("OK"));
+        assert!(status_table.contains("host1"));
+        assert!(status_table.contains("0"));
+    }
 }
