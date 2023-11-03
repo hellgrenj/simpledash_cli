@@ -24,17 +24,15 @@ fn main() {
     visualize_payload(peek_payload, &ns, &cluster_info);
 
     loop {
-        let payload_option = match receive_payload(&mut socket, &settings.host) {
-            Ok(payload) => payload,
+        let payload = match receive_payload(&mut socket, &settings.host) {
+            Ok(p) => match p {
+                Some(p) => p,
+                None => continue, // no payload on ping (tungstenite replies with pong automatically)
+            },
             Err(e) => {
                 eprintln!("Error receiving payload: {:?}", e);
                 continue;
             }
-        };
-
-        let payload = match payload_option {
-            Some(payload) => payload,
-            None => continue, // no payload on ping (tungstenite replies with pong automatically)
         };
 
         visualize_payload(payload, &ns, &cluster_info);
@@ -55,16 +53,15 @@ fn get_cluster_status(
     host: &String,
 ) -> (Payload, String) {
     loop {
-        let payload_option = match receive_payload(socket, host) {
-            Ok(payload) => payload,
+        let payload = match receive_payload(socket, host) {
+            Ok(p) => match p {
+                Some(p) => p,
+                None => continue, // no payload on ping (tungstenite replies with pong automatically)
+            },
             Err(e) => {
                 eprintln!("Error receiving payload: {:?}", e);
                 continue;
             }
-        };
-        let payload = match payload_option {
-            Some(payload) => payload,
-            None => continue, // no payload on ping (tungstenite replies with pong automatically)
         };
         break check_cluster_status(host, payload);
     }
@@ -468,22 +465,26 @@ mod tests {
         let payload = Payload {
             nodes: std::collections::HashMap::from_iter(vec![(
                 "node1".to_string(),
-                vec![models::Pods {
-                    namespace: "namespace1".to_string(),
-                    name: "pod1".to_string(),
-                    status: "Running".to_string(),
-                    image: "image1:tag1".to_string(),
-                }, models::Pods {
-                    namespace: "namespace1".to_string(),
-                    name: "pod2".to_string(),
-                    status: "Succeeded".to_string(),
-                    image: "image2:tag2".to_string(),
-                }, models::Pods {
-                    namespace: "namespace1".to_string(),
-                    name: "pod3".to_string(),
-                    status: "Completed".to_string(),
-                    image: "image3:tag3".to_string(),
-                }],
+                vec![
+                    models::Pods {
+                        namespace: "namespace1".to_string(),
+                        name: "pod1".to_string(),
+                        status: "Running".to_string(),
+                        image: "image1:tag1".to_string(),
+                    },
+                    models::Pods {
+                        namespace: "namespace1".to_string(),
+                        name: "pod2".to_string(),
+                        status: "Succeeded".to_string(),
+                        image: "image2:tag2".to_string(),
+                    },
+                    models::Pods {
+                        namespace: "namespace1".to_string(),
+                        name: "pod3".to_string(),
+                        status: "Completed".to_string(),
+                        image: "image3:tag3".to_string(),
+                    },
+                ],
             )]),
             ..Default::default()
         };
