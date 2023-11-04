@@ -1,10 +1,8 @@
-use tungstenite::{connect, stream::MaybeTlsStream, WebSocket};
 use crate::models::ClusterInfo;
-
-use url::Url;
 use reqwest::{self, Error};
-use colored::*;
 use std::net::TcpStream;
+use tungstenite::{connect, stream::MaybeTlsStream, WebSocket};
+use url::Url;
 
 pub fn get_cluster_info(host: &String) -> Result<ClusterInfo, Error> {
     let url = format!("{}/context", host);
@@ -39,10 +37,5 @@ pub fn connect_to_host(
             return Err(Box::new(e));
         }
     };
-
-    println!(
-        "{}",
-        "successfully connected!".green().bold()
-    );
     Ok(socket)
 }

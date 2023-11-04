@@ -1,20 +1,17 @@
 mod cli;
 mod client;
 mod models;
-
-use std::net::TcpStream;
-
 use cli::clear_screen;
 use cli_table::{format::Justify, Cell, Style, Table};
 use colored::*;
 use dialoguer::{theme::ColorfulTheme, Select};
 use models::{ClusterInfo, Payload};
+use std::net::TcpStream;
 use tungstenite::{stream::MaybeTlsStream, WebSocket};
 
 fn main() {
-    clear_screen();
-    println!("{}", "..::simpledash CLI::..\n".magenta().on_black().bold());
     let settings = cli::parse_args();
+    clear_screen();
     let mut socket = client::connect_to_host(&settings.host).expect("Error connecting to host");
     let cluster_info =
         client::get_cluster_info(&settings.host).expect("Failed to fetch Simpledash Context");
