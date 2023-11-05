@@ -19,14 +19,14 @@ view logs links and endpoint links.\
 linux x86_64:
 
 ```
-curl -Lo sc https://github.com/hellgrenj/simpledash_cli/releases/download/v0.2.2/sc-linux-x86_64 && \
+curl -Lo sc https://github.com/hellgrenj/simpledash_cli/releases/download/v0.2.3/sc-linux-x86_64 && \
 sudo install sc /usr/local/bin/
 ```
 
 macos arm64:
 
 ```
-curl -Lo sc https://github.com/hellgrenj/simpledash_cli/releases/download/v0.2.2/sc-macos-arm64 && \
+curl -Lo sc https://github.com/hellgrenj/simpledash_cli/releases/download/v0.2.3/sc-macos-arm64 && \
 sudo install sc /usr/local/bin/
 ```
 
