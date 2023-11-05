@@ -13,7 +13,7 @@ pub fn parse_args() -> Settings {
     let args: Vec<String> = std::env::args().collect();
     for (i, arg) in args.iter().enumerate() {
         if arg == "--help" {
-            println!("Usage: sc -h <host>");
+            println!("Usage: sc -h <host> (e.g -h https://simpledash.mycompany.com)");
             std::process::exit(0);
         }
         if arg == "--version" {
@@ -24,7 +24,7 @@ pub fn parse_args() -> Settings {
             if i + 1 < args.len() {
                 host = args[i + 1].clone();
             } else {
-                eprintln!("Error: -h requires a host argument");
+                eprintln!("{}","Error: -h requires a host (e.g -h https://simpledash.mycompany.com)".red().bold());
                 std::process::exit(1);
             }
         }
@@ -32,7 +32,7 @@ pub fn parse_args() -> Settings {
     if host == "" {
         eprintln!(
             "{}",
-            "You have to provide a host with -h <host>".red().bold()
+            "You have to provide a host with -h <host> (e.g -h https://simpledash.mycompany.com)".red().bold()
         );
         std::process::exit(1);
     }

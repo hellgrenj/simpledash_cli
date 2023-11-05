@@ -11,11 +11,11 @@ use tungstenite::{stream::MaybeTlsStream, WebSocket};
 
 fn main() {
     let settings = cli::parse_args();
-    clear_screen();
     let mut socket = client::connect_to_host(&settings.host).expect("Error connecting to host");
     let cluster_info =
         client::get_cluster_info(&settings.host).expect("Failed to fetch Simpledash Context");
 
+    clear_screen();
     let peek_payload = visualize_cluster_status(&mut socket, &settings.host);
     let ns = select_namespace(&cluster_info);
     visualize_payload(peek_payload, &ns, &cluster_info);
