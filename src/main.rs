@@ -5,7 +5,7 @@ use cli::clear_screen;
 use cli_table::{format::Justify, Cell, Style, Table};
 use colored::*;
 use dialoguer::{theme::ColorfulTheme, Select};
-use models::{ClusterInfo, Payload};
+use models::{ClusterInfo, Payload, Pods};
 use std::net::TcpStream;
 use tungstenite::{stream::MaybeTlsStream, WebSocket};
 
@@ -130,8 +130,8 @@ fn receive_payload(
     host: &String,
 ) -> Result<Option<Payload>, Box<dyn std::error::Error>> {
     if !socket.can_read() {
-        println!("lost connection, trying to reconnect in 10 seconds...");
-        std::thread::sleep(std::time::Duration::from_secs(10));
+        println!("lost connection, trying to reconnect in 3 seconds...");
+        std::thread::sleep(std::time::Duration::from_secs(3));
         *socket = client::connect_to_host(host)?;
     }
     let read_result = socket.read()?;
@@ -250,12 +250,16 @@ fn get_pods_visualization(payload: &Payload, namespace: &str) -> String {
         "status".cell().bold(true),
         "tag".cell().bold(true),
     ]];
-    for (key, value) in payload.nodes.iter() {
-        for pod in value.iter() {
-            if pod.namespace != *namespace {
-                continue;
-            }
 
+    let mut pairs: Vec<_> = payload.nodes.clone().into_iter().collect();
+    pairs.sort_by_key(|pair| pair.0.clone());
+    for (key, value) in pairs {
+        let mut pods_in_namespace: Vec<&Pods> = value
+            .iter()
+            .filter(|pod| pod.namespace == *namespace)
+            .collect();
+        pods_in_namespace.sort();
+        for pod in pods_in_namespace {
             let colored_status: ColoredString;
             if pod.status == "Running" || pod.status == "Succeeded" || pod.status == "Completed" {
                 colored_status = pod.status.green();
@@ -274,7 +278,7 @@ fn get_pods_visualization(payload: &Payload, namespace: &str) -> String {
             };
 
             pod_rows.push(vec![
-                key.cell(),
+                key.clone().cell(),
                 pod.name.clone().cell(),
                 colored_status.cell().justify(Justify::Right),
                 pod_image_tag.cell(),

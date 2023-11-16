@@ -29,7 +29,7 @@ pub struct Payload {
     pub deployments: Vec<Deployment>,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Deserialize, PartialEq, Eq, PartialOrd, Ord, Clone)]
 pub struct Pods {
     #[serde(rename = "Namespace")]
     pub namespace: String,
