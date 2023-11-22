@@ -79,7 +79,7 @@ fn check_cluster_status(host: &String, payload: Payload) -> (Payload, String) {
         "...in namespaces".magenta().bold().cell().bold(true),
         "overall status".magenta().bold().cell().bold(true),
     ]];
-    if pods_in_bad_state.len() > 0 {
+    if !pods_in_bad_state.is_empty() {
         let failed_in_namespaces = pods_in_bad_state
             .iter()
             .map(|pod| pod.namespace.clone())
@@ -122,12 +122,12 @@ fn check_cluster_status(host: &String, payload: Payload) -> (Payload, String) {
         }
     };
 
-    return (payload, table_display.to_string());
+    (payload, table_display.to_string())
 }
 
 fn receive_payload(
     socket: &mut WebSocket<MaybeTlsStream<TcpStream>>,
-    host: &String,
+    host: &str,
 ) -> Result<Option<Payload>, Box<dyn std::error::Error>> {
     if !socket.can_read() {
         println!("lost connection, trying to reconnect in 3 seconds...");
@@ -136,7 +136,7 @@ fn receive_payload(
     }
     let read_result = socket.read()?;
 
-    if read_result.len() > 0 {
+    if !read_result.is_empty() {
         let payload: Payload = serde_json::from_str(&read_result.to_string())?;
         Ok(Some(payload))
     } else {
@@ -147,12 +147,10 @@ fn receive_payload(
 fn select_namespace(cluster_info: &ClusterInfo) -> String {
     let namespaces = &cluster_info.namespaces;
     let selections = &namespaces[..];
-    println!("");
-    println!("select namespace:({})", selections.len());
-    println!("");
+    println!("\nselect namespace:({})\n", selections.len());
     let selection_result = Select::with_theme(&ColorfulTheme::default())
         .default(0)
-        .items(&selections[..])
+        .items(selections)
         .interact();
 
     let selection = match selection_result {
@@ -272,10 +270,7 @@ fn get_pods_visualization(payload: &Payload, namespace: &str) -> String {
                 colored_status = pod.status.red();
             }
 
-            let pod_image_tag = match pod.image.split(":").last() {
-                Some(tag) => tag,
-                None => "unknown",
-            };
+            let pod_image_tag = pod.image.split(':').last().unwrap_or("unknown");
 
             pod_rows.push(vec![
                 key.clone().cell(),

@@ -6,7 +6,7 @@ pub fn clear_screen() {
     print!("{esc}[2J{esc}[1;1H", esc = 27 as char); // position cursor at row 1, col 1
 }
 pub fn make_link(url: String, anchor_text: String) -> String {
-    return format!("\x1b]8;;{}\x07{}\x1b]8;;\x07", url, anchor_text);
+    format!("\x1b]8;;{}\x07{}\x1b]8;;\x07", url, anchor_text)
 }
 pub fn parse_args() -> Settings {
     let mut host = "".to_string();
@@ -24,15 +24,22 @@ pub fn parse_args() -> Settings {
             if i + 1 < args.len() {
                 host = args[i + 1].clone();
             } else {
-                eprintln!("{}","Error: -h requires a host (e.g -h https://simpledash.mycompany.com)".red().bold());
+                eprintln!(
+                    "{}",
+                    "Error: -h requires a host (e.g -h https://simpledash.mycompany.com)"
+                        .red()
+                        .bold()
+                );
                 std::process::exit(1);
             }
         }
     }
-    if host == "" {
+    if host.is_empty() {
         eprintln!(
             "{}",
-            "You have to provide a host with -h <host> (e.g -h https://simpledash.mycompany.com)".red().bold()
+            "You have to provide a host with -h <host> (e.g -h https://simpledash.mycompany.com)"
+                .red()
+                .bold()
         );
         std::process::exit(1);
     }
@@ -45,5 +52,5 @@ pub fn parse_args() -> Settings {
         );
         std::process::exit(1);
     }
-    return Settings { host };
+    Settings { host }
 }
