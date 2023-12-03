@@ -39,3 +39,32 @@ pub fn connect_to_host(
     };
     Ok(socket)
 }
+
+pub fn try_reconnect_with_backoff(
+    host: &str,
+    socket: &mut WebSocket<MaybeTlsStream<TcpStream>>,
+    attempt: Option<u64>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let max_attempts = 5;
+    let attempt = attempt.unwrap_or(1);
+    let sleep_time = attempt * 3;
+    println!(
+        "trying to reconnect in {} seconds (attempt {:?}/{:?})...",
+        sleep_time, attempt, max_attempts
+    );
+    std::thread::sleep(std::time::Duration::from_secs(sleep_time));
+    *socket = match connect_to_host(host) {
+        Ok(c) => c,
+        Err(e) => {
+            let new_attempt = attempt + 1;
+            if new_attempt <= max_attempts {
+                return try_reconnect_with_backoff(host, socket, Some(new_attempt));
+            } else {
+                eprintln!("Failed to reconnect {:?} times", attempt);
+                return Err(e);
+            }
+        }
+    };
+    Ok(())
+}
+

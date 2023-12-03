@@ -131,7 +131,7 @@ fn receive_payload(
 ) -> Result<Option<Payload>, Box<dyn std::error::Error>> {
     if !socket.can_read() {
         println!("lost connection..");
-        match try_reconnect_with_backoff(host, socket, None) {
+        match client::try_reconnect_with_backoff(host, socket, None) {
             Ok(()) => (),
             Err(_) => {
                 eprintln!("Failed to reconnect");
@@ -148,33 +148,6 @@ fn receive_payload(
     }
 }
 
-fn try_reconnect_with_backoff(
-    host: &str,
-    socket: &mut WebSocket<MaybeTlsStream<TcpStream>>,
-    attempt: Option<u64>,
-) -> Result<(), Box<dyn std::error::Error>> {
-    let max_attempts = 5;
-    let attempt = attempt.unwrap_or(1);
-    let sleep_time = attempt * 3;
-    println!(
-        "trying to reconnect in {} seconds (attempt {:?}/{:?})...",
-        sleep_time, attempt, max_attempts
-    );
-    std::thread::sleep(std::time::Duration::from_secs(sleep_time));
-    *socket = match client::connect_to_host(host) {
-        Ok(c) => c,
-        Err(e) => {
-            let new_attempt = attempt + 1;
-            if new_attempt <= max_attempts {
-                return try_reconnect_with_backoff(host, socket, Some(new_attempt));
-            } else {
-                eprintln!("Failed to reconnect {:?} times", attempt);
-                return Err(e);
-            }
-        }
-    };
-    Ok(())
-}
 
 fn select_namespace(cluster_info: &ClusterInfo) -> String {
     let namespaces = &cluster_info.namespaces;
