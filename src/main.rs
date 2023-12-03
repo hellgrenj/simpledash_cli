@@ -130,18 +130,50 @@ fn receive_payload(
     host: &str,
 ) -> Result<Option<Payload>, Box<dyn std::error::Error>> {
     if !socket.can_read() {
-        println!("lost connection, trying to reconnect in 3 seconds...");
-        std::thread::sleep(std::time::Duration::from_secs(3));
-        *socket = client::connect_to_host(host)?;
+        println!("lost connection..");
+        match try_reconnect_with_backoff(host, socket, None) {
+            Ok(()) => (),
+            Err(_) => {
+                eprintln!("Failed to reconnect");
+                std::process::exit(1);
+            }
+        };
     }
     let read_result = socket.read()?;
-
     if !read_result.is_empty() {
         let payload: Payload = serde_json::from_str(&read_result.to_string())?;
         Ok(Some(payload))
     } else {
         Ok(None) // no payload on ping (tungstenite replies with pong automatically)
     }
+}
+
+fn try_reconnect_with_backoff(
+    host: &str,
+    socket: &mut WebSocket<MaybeTlsStream<TcpStream>>,
+    attempt: Option<u64>,
+) -> Result<(), Box<dyn std::error::Error>> {
+    let max_attempts = 5;
+    let attempt = attempt.unwrap_or(1);
+    let sleep_time = attempt * 3;
+    println!(
+        "trying to reconnect in {} seconds (attempt {:?}/{:?})...",
+        sleep_time, attempt, max_attempts
+    );
+    std::thread::sleep(std::time::Duration::from_secs(sleep_time));
+    *socket = match client::connect_to_host(host) {
+        Ok(c) => c,
+        Err(e) => {
+            let new_attempt = attempt + 1;
+            if new_attempt <= max_attempts {
+                return try_reconnect_with_backoff(host, socket, Some(new_attempt));
+            } else {
+                eprintln!("Failed to reconnect {:?} times", attempt);
+                return Err(e);
+            }
+        }
+    };
+    Ok(())
 }
 
 fn select_namespace(cluster_info: &ClusterInfo) -> String {
