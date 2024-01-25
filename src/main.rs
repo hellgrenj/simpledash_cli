@@ -6,7 +6,7 @@ use cli_table::{format::Justify, Cell, Style, Table};
 use colored::*;
 use dialoguer::{theme::ColorfulTheme, Select};
 use models::{ClusterInfo, Payload, Pods};
-use std::net::TcpStream;
+use std::{collections::HashMap, net::TcpStream};
 use tungstenite::{stream::MaybeTlsStream, WebSocket};
 
 fn main() {
@@ -144,10 +144,57 @@ fn receive_payload(
     }
 }
 
-fn select_namespace(cluster_info: &ClusterInfo) -> String {
+fn select_namespaces_group(cluster_info: &ClusterInfo) -> (String, Vec<String>) {
     let namespaces = &cluster_info.namespaces;
+    println!(
+        "\n{} namespaces sorted by first letter",
+        namespaces.len()
+    );
+    let grouped_namespaces = group_ns_by_first_letter(namespaces.to_vec());
+    let mut sorted_keys = grouped_namespaces.keys().collect::<Vec<&char>>();
+    sorted_keys.sort();
+    let selections = sorted_keys
+        .iter()
+        .map(|key| format!("{} ({})", key, grouped_namespaces.get(key).unwrap().len()))
+        .collect::<Vec<String>>();
+    let selection_result = Select::with_theme(&ColorfulTheme::default())
+        .default(0)
+        .items(&selections[..])
+        .interact();
+
+    let selection = match selection_result {
+        Ok(selection) => selection,
+        Err(e) => {
+            eprintln!("Error selecting namespace group: {:?}", e);
+            return ("_".to_string(), vec!["default_namespace".to_string()]);
+        }
+    };
+    let key = selections[selection].chars().next().unwrap();
+    (
+        key.to_string(),
+        grouped_namespaces
+            .get(&key)
+            .unwrap()
+            .to_vec(),
+    )
+}
+
+fn group_ns_by_first_letter(ns: Vec<String>) -> HashMap<char, Vec<String>> {
+    let mut ns_groups: HashMap<char, Vec<String>> = HashMap::new();
+
+    for name in ns {
+        if let Some(first_letter) = name.chars().next() {
+            let key = first_letter.to_ascii_uppercase();
+            ns_groups.entry(key).or_default().push(name);
+        }
+    }
+    ns_groups
+}
+
+fn select_namespace(cluster_info: &ClusterInfo) -> String {
+    let (letter, namespaces) = select_namespaces_group(cluster_info);
     let selections = &namespaces[..];
-    println!("\nselect namespace:({})\n", selections.len());
+    println!("{} namespaces starting with '{}':",selections.len(), letter);
     let selection_result = Select::with_theme(&ColorfulTheme::default())
         .default(0)
         .items(selections)
