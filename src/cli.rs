@@ -17,7 +17,7 @@ pub fn parse_args() -> Settings {
             std::process::exit(0);
         }
         if arg == "--version" {
-            println!("v0.2.4");
+            println!("v0.2.5");
             std::process::exit(0);
         }
         if arg == "-h" {

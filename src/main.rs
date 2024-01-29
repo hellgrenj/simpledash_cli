@@ -169,7 +169,14 @@ fn select_namespaces_group(cluster_info: &ClusterInfo) -> (String, Vec<String>) 
             return ("_".to_string(), vec!["default_namespace".to_string()]);
         }
     };
-    let key = selections[selection].chars().next().unwrap();
+   
+    let key = match selections[selection].chars().next() { 
+        Some(key) => key,
+        None => {
+            eprintln!("Error selecting namespace group: {:?}", "key is None");
+            return ("_".to_string(), vec!["default_namespace".to_string()]);
+        }
+    };
     (
         key.to_string(),
         grouped_namespaces
