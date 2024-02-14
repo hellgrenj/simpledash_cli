@@ -73,10 +73,20 @@ fn check_cluster_status(host: &String, payload: Payload) -> (Payload, String) {
             }
         }
     }
+    let total_pods = payload
+        .nodes
+        .values()
+        .map(|value| value.len())
+        .sum::<usize>();
+
+    let number_of_nodes = payload.nodes.len();
+
     let mut rows = vec![vec![
         "cluster".magenta().bold().cell().bold(true),
         "#unhealthy pods".magenta().bold().cell().bold(true),
         "...in namespaces".magenta().bold().cell().bold(true),
+        "total pods".magenta().bold().cell().bold(true),
+        "#worker nodes".magenta().bold().cell().bold(true),
         "overall status".magenta().bold().cell().bold(true),
     ]];
     if !pods_in_bad_state.is_empty() {
@@ -97,6 +107,8 @@ fn check_cluster_status(host: &String, payload: Payload) -> (Payload, String) {
                 .cell()
                 .justify(Justify::Left),
             failed_in_namespaces.cell().justify(Justify::Left),
+            total_pods.to_string().blue().cell().justify(Justify::Left),
+            number_of_nodes.to_string().blue().cell().justify(Justify::Left),
             "BAD".bold().red().cell().justify(Justify::Left),
         ]);
     } else {
@@ -109,6 +121,8 @@ fn check_cluster_status(host: &String, payload: Payload) -> (Payload, String) {
                 .cell()
                 .justify(Justify::Left),
             "".cell().justify(Justify::Left),
+            total_pods.to_string().blue().cell().justify(Justify::Left),
+            number_of_nodes.to_string().blue().cell().justify(Justify::Left),
             "OK".bold().green().cell().justify(Justify::Left),
         ]);
     }
@@ -146,10 +160,7 @@ fn receive_payload(
 
 fn select_namespaces_group(cluster_info: &ClusterInfo) -> (String, Vec<String>) {
     let namespaces = &cluster_info.namespaces;
-    println!(
-        "\n{} namespaces sorted by first letter",
-        namespaces.len()
-    );
+    println!("\n{} namespaces sorted by first letter", namespaces.len());
     let grouped_namespaces = group_ns_by_first_letter(namespaces.to_vec());
     let mut sorted_keys = grouped_namespaces.keys().collect::<Vec<&char>>();
     sorted_keys.sort();
@@ -169,8 +180,8 @@ fn select_namespaces_group(cluster_info: &ClusterInfo) -> (String, Vec<String>) 
             return ("_".to_string(), vec!["default_namespace".to_string()]);
         }
     };
-   
-    let key = match selections[selection].chars().next() { 
+
+    let key = match selections[selection].chars().next() {
         Some(key) => key,
         None => {
             eprintln!("Error selecting namespace group: {:?}", "key is None");
@@ -179,10 +190,7 @@ fn select_namespaces_group(cluster_info: &ClusterInfo) -> (String, Vec<String>) 
     };
     (
         key.to_string(),
-        grouped_namespaces
-            .get(&key)
-            .unwrap()
-            .to_vec(),
+        grouped_namespaces.get(&key).unwrap().to_vec(),
     )
 }
 
@@ -201,7 +209,11 @@ fn group_ns_by_first_letter(ns: Vec<String>) -> HashMap<char, Vec<String>> {
 fn select_namespace(cluster_info: &ClusterInfo) -> String {
     let (letter, namespaces) = select_namespaces_group(cluster_info);
     let selections = &namespaces[..];
-    println!("{} namespaces starting with '{}':",selections.len(), letter);
+    println!(
+        "{} namespaces starting with '{}':",
+        selections.len(),
+        letter
+    );
     let selection_result = Select::with_theme(&ColorfulTheme::default())
         .default(0)
         .items(selections)
@@ -286,8 +298,9 @@ fn get_deployments_visualization(
     result
 }
 fn print_pods_table(payload: &Payload, namespace: &str, cluster_info: &ClusterInfo) {
-    println!("{}", "Pods:".magenta().bold());
-    println!("{}", get_pods_visualization(payload, namespace));
+    let (pod_viz, no_pods) = get_pods_visualization(payload, namespace);
+    println!("{}({})", "Pods:".magenta().bold(), no_pods.to_string().as_str().blue());
+    println!("{}", pod_viz);
     println!(
         "{} in {} as per {}",
         namespace.bold().magenta().on_black(),
@@ -295,7 +308,7 @@ fn print_pods_table(payload: &Payload, namespace: &str, cluster_info: &ClusterIn
         payload.timestamp.bold().yellow()
     );
 }
-fn get_pods_visualization(payload: &Payload, namespace: &str) -> String {
+fn get_pods_visualization(payload: &Payload, namespace: &str) -> (String, usize) {
     let mut pod_rows = vec![vec![
         "node".cell().bold(true),
         "pod name".cell().bold(true),
@@ -305,11 +318,13 @@ fn get_pods_visualization(payload: &Payload, namespace: &str) -> String {
 
     let mut pairs: Vec<_> = payload.nodes.clone().into_iter().collect();
     pairs.sort_by_key(|pair| pair.0.clone());
+    let mut total_no_pods = 0;
     for (key, value) in pairs {
         let mut pods_in_namespace: Vec<&Pods> = value
             .iter()
             .filter(|pod| pod.namespace == *namespace)
             .collect();
+        total_no_pods += pods_in_namespace.len();
         pods_in_namespace.sort();
         for pod in pods_in_namespace {
             let colored_status: ColoredString;
@@ -339,10 +354,10 @@ fn get_pods_visualization(payload: &Payload, namespace: &str) -> String {
         Ok(display) => display,
         Err(e) => {
             eprintln!("Error displaying pod table: {:?}", e);
-            return "could not visualize pods".to_string();
+            return ("could not visualize pods".to_string(), 0);
         }
     };
-    pod_table_display.to_string()
+    (pod_table_display.to_string(), total_no_pods)
 }
 
 #[cfg(test)]
@@ -466,9 +481,13 @@ mod tests {
         };
 
         // Act
-        let visualization = get_pods_visualization(&payload, "namespace1");
+        let (visualization, no_of_pods) = get_pods_visualization(&payload, "namespace1");
 
         // Assert
+        
+        // no_of_pods is 2
+        assert!(no_of_pods == 2);
+
         // contains this (pod 1 and pod 3 in node 1 and node 2)
         assert!(visualization.contains("node1"));
         assert!(visualization.contains("pod1"));
